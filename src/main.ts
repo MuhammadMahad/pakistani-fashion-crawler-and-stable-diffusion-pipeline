@@ -5,7 +5,20 @@ import { Page } from "playwright";
 
 await Actor.init();
 
+const globs = {
+  khaadi: ["https://pk.khaadi.com/**"],
+  sanaSafinaz: ["https://www.sanasafinaz.com/pk/*"],
+  mariaB: [
+    "https://www.mariab.pk/*",
+    "https://www.mariab.pk/pages/*",
+    "https://www.mariab.pk/collections/*",
+    "https://www.mariab.pk/products/*",
+  ],
+  gulAhmed: ["https://www.gulahmedshop.com/*"],
+};
+
 const exclusions = {
+  khaadi: ["https://pk.khaadi.com/fragrances*"],
   sanaSafinaz: [
     "https://www.sanasafinaz.com/pk/kids*",
     "https://www.sanasafinaz.com/pk/fragrances*",
@@ -32,8 +45,6 @@ const exclusions = {
 
 const extractors = {
   "pk.khaadi.com": async (page: Page) => {
-    // things to improve:
-    // doesn't get all images because some images only appear only click a button to scroll down through the images
     try {
       // Additional extraction logic
       // Wait for the main content to load
@@ -53,21 +64,17 @@ const extractors = {
       // Concatenate all extracted text into a single description
       const description = `${brand} ${productName} ${specifications}`;
 
-      // Extract image URLs from the first selector
-      const currentImageUrls = await page.$$eval(
-        ".slick-current .mz-figure img[data-url]",
-        (imgs) => imgs.map((img) => img.getAttribute("data-url"))
-      );
-
-      // Extract image URLs from the second selector
-      const slideImageUrls = await page.$$eval(
-        "div.slick-slide:nth-of-type(n+2) img[itemprop='image']",
-        (imgs) => imgs.map((img) => img.getAttribute("src"))
-      );
-
-      // Combine and filter out any null values
-      const imageUrls = [...currentImageUrls, ...slideImageUrls].filter(
-        (url) => url !== null && !url.includes("Khaadi-logo--new-with-mark")
+      const imageUrls = await page.$$eval("a.mz-thumb", (anchors) =>
+        anchors
+          .map((anchor) => {
+            const dataImage = anchor.getAttribute("data-image");
+            return dataImage
+              ? dataImage.startsWith("//")
+                ? "https:" + dataImage
+                : dataImage
+              : null;
+          })
+          .filter((url) => url !== null)
       );
 
       return { description, imageUrls };
@@ -77,7 +84,6 @@ const extractors = {
   },
   "sanasafinaz.com": async (page: Page) => {
     // things to improve:
-    // images are too small
     // remove ids such as SS23BSP214F from description
     try {
       const paragraphs = page.locator("[itemprop='description'] p");
@@ -88,12 +94,13 @@ const extractors = {
 
       const description = originalDescription.replace(/Not Included/gi, "");
 
-      // Create a locator for the target images
-      const images = page.locator(".mt-thumb-switcher img");
-
-      // Retrieve the src attributes of all matching images
-      const imageUrls = await images.evaluateAll((imgElements) =>
-        imgElements.map((img) => (img as HTMLImageElement).src)
+      const imageUrls = await page.$$eval("a.mt-thumb-switcher", (anchors) =>
+        anchors
+          .map((anchor) => {
+            const dataImage = anchor.getAttribute("data-image");
+            return dataImage ? dataImage : null;
+          })
+          .filter((url) => url !== null)
       );
 
       return { description, imageUrls };
@@ -183,18 +190,22 @@ const extractors = {
       const description =
         `${startingDescription} ${additionalAttributes}`.trim();
 
-      const imageUrls = await page.$$eval("a.mt-thumb-switcher", (anchors) =>
-        anchors
-          .map((anchor) => {
-            const dataImage = anchor.getAttribute("data-image");
-            return dataImage
-              ? dataImage.startsWith("//")
-                ? "https:" + dataImage
-                : dataImage
-              : null;
-          })
-          .filter((url) => url !== null)
+      const imageUrlsWithPotentialDuplicates = await page.$$eval(
+        "a.mt-thumb-switcher",
+        (anchors) =>
+          anchors
+            .map((anchor) => {
+              const dataImage = anchor.getAttribute("data-image");
+              return dataImage
+                ? dataImage.startsWith("//")
+                  ? "https:" + dataImage
+                  : dataImage
+                : null;
+            })
+            .filter((url) => url !== null)
       );
+
+      const imageUrls = [...new Set(imageUrlsWithPotentialDuplicates)];
 
       return { description, imageUrls };
     } catch (error) {
@@ -236,39 +247,18 @@ const crawler = new PlaywrightCrawler({
 
     // Extract links from the current page
     // and add them to the crawling queue.
-    // await enqueueLinks();
 
-    // Enqueue links to follow
-    // await enqueueLinks({
-    //   // Adjust the selector to target specific links
-    //   selector: "a",
-    //   // Optionally, specify patterns to include or exclude certain links
-    //     globs: [
-    //       "https://sanasafinaz.com/**",
-    //       "https://pk.khaadi.com/**",
-    //       "https://www.mariab.pk/**",
-    //       "https://www.gulahmedshop.com/**",
-    //       "https://nishatlinen.com/**",
-    //       "https://pk.sapphireonline.pk/**",
-    //       "https://bareeze.com/**",
-    //       "https://www.junaidjamshed.com/**",
-    //       "https://asimjofa.com/**",
-    //       "https://www.alkaramstudio.com/**" /* add more patterns as needed */,
-    //     ],
-    // });
     await enqueueLinks({
       strategy: "same-hostname",
 
       globs: [
-        "https://pk.khaadi.com/*",
-        "https://www.sanasafinaz.com/pk/*",
-        "https://www.mariab.pk/*",
-        "https://www.mariab.pk/pages/*",
-        "https://www.mariab.pk/collections/*",
-        "https://www.mariab.pk/products/*",
-        "https://www.gulahmedshop.com/*",
+        ...globs.khaadi,
+        ...globs.sanaSafinaz,
+        ...globs.mariaB,
+        ...globs.gulAhmed,
       ],
       exclude: [
+        ...exclusions.khaadi,
         ...exclusions.sanaSafinaz,
         ...exclusions.mariaB,
         ...exclusions.gulAhmed,
@@ -288,9 +278,10 @@ const crawler = new PlaywrightCrawler({
 // List of initial URLs to crawl
 const startUrls = [
   //   "https://pk.khaadi.com/",
-  //   "https://www.sanasafinaz.com/pk/",
+  "https://www.sanasafinaz.com/pk/",
   //   "https://www.mariab.pk/",
-  "https://www.gulahmedshop.com/",
+  //   "https://www.gulahmedshop.com/",
+
   //   "https://nishatlinen.com/",
   //   "https://pk.sapphireonline.pk/",
   //   "https://bareeze.com/",
