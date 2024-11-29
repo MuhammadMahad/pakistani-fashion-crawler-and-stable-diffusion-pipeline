@@ -415,9 +415,9 @@ const startUrls = [
   //   "https://www.mariab.pk/",
   //   "https://www.gulahmedshop.com/",
   //   "https://nishatlinen.com/",
+  //   "https://pk.sapphireonline.pk/",
 
-  "https://pk.sapphireonline.pk/",
-  //   "https://bareeze.com/",
+  "https://bareeze.com/",
   //   "https://www.junaidjamshed.com/",
   //   "https://asimjofa.com/",
   //   "https://www.alkaramstudio.com/",
