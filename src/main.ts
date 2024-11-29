@@ -5,6 +5,31 @@ import { Page } from "playwright";
 
 await Actor.init();
 
+const exclusions = {
+  sanaSafinaz: [
+    "https://www.sanasafinaz.com/pk/kids*",
+    "https://www.sanasafinaz.com/pk/fragrances*",
+  ],
+  mariaB: [
+    "https://www.mariab.pk/collections/perfumes*",
+    "https://www.mariab.pk/collections/mommy-me*",
+    "https://www.mariab.pk/pages/kids*",
+    "https://www.mariab.pk/collections/kids*",
+    "https://www.mariab.pk/collections/view-all-kids*",
+    "https://www.mariab.pk/collections/baba-me*",
+    "https://www.mariab.pk/collections/kidswear*",
+    "https://www.mariab.pk/collections/new-arrivals-kids*",
+  ],
+  gulAhmed: [
+    "https://www.gulahmedshop.com/sale/kids*",
+    "https://www.gulahmedshop.com/sale/fragrances*",
+    "https://www.gulahmedshop.com/salt-western-wear/kids/*",
+    "https://www.gulahmedshop.com/kids/*",
+    "https://www.gulahmedshop.com/fragrances-perfumes/*",
+    "https://www.gulahmedshop.com/fragrances-perfumes*",
+  ],
+};
+
 const extractors = {
   "pk.khaadi.com": async (page: Page) => {
     // things to improve:
@@ -53,12 +78,15 @@ const extractors = {
   "sanasafinaz.com": async (page: Page) => {
     // things to improve:
     // images are too small
+    // remove ids such as SS23BSP214F from description
     try {
       const paragraphs = page.locator("[itemprop='description'] p");
 
       const texts = await paragraphs.allTextContents();
 
-      const description = texts.join(" ");
+      const originalDescription = texts.join(" ");
+
+      const description = originalDescription.replace(/Not Included/gi, "");
 
       // Create a locator for the target images
       const images = page.locator(".mt-thumb-switcher img");
@@ -66,6 +94,106 @@ const extractors = {
       // Retrieve the src attributes of all matching images
       const imageUrls = await images.evaluateAll((imgElements) =>
         imgElements.map((img) => (img as HTMLImageElement).src)
+      );
+
+      return { description, imageUrls };
+    } catch (error) {
+      return {};
+    }
+  },
+  "mariab.pk": async (page: Page) => {
+    // things to improve:
+    // Remove ids such as SF-W24-18 from description
+    try {
+      const description = (
+        await page.locator("h1, p.gygygy").allTextContents()
+      ).join("");
+
+      const imageHandles = await page.$$(".product__thumb img");
+      const imageUrls = [];
+
+      for (const imageHandle of imageHandles) {
+        const srcset = await imageHandle.getAttribute("srcset");
+        if (srcset) {
+          // Split the srcset string into individual image descriptors
+          const sources = srcset.split(",").map((src) => {
+            const [url, descriptor] = src.trim().split(" ");
+            return { url, descriptor };
+          });
+          // Sort sources by descriptor to get the highest resolution
+          sources.sort((a, b) => {
+            const aRes = parseInt(a.descriptor, 10);
+            const bRes = parseInt(b.descriptor, 10);
+            return bRes - aRes;
+          });
+          // Take the highest resolution image
+          let src = sources[0].url;
+          if (src.startsWith("//")) {
+            src = "https:" + src;
+          }
+          imageUrls.push(src);
+        } else {
+          let src = await imageHandle.getAttribute("src");
+          if (src) {
+            if (src.startsWith("//")) {
+              src = "https:" + src;
+            }
+            imageUrls.push(src);
+          }
+        }
+      }
+
+      return { description, imageUrls };
+    } catch (error) {
+      return {};
+    }
+  },
+  "gulahmedshop.com": async (page: Page) => {
+    // things to improve:
+    try {
+      const startingDescription = await page.evaluate(() => {
+        const baseElement = document.querySelector("span.base");
+        const descriptionDivs = document.querySelectorAll(".description div");
+
+        const baseText = baseElement ? baseElement.textContent?.trim() : "";
+        const descriptionTexts = Array.from(descriptionDivs)
+          .map((div) => div.textContent)
+          .join(" ");
+
+        return `${baseText} ${descriptionTexts}`.trim();
+      });
+
+      // Extract additional attributes from the table, excluding the "Discount Percentage" row
+      const additionalAttributes = await page.evaluate(() => {
+        const rows = document.querySelectorAll(
+          "table.data.table.additional-attributes tbody tr"
+        );
+        return Array.from(rows)
+          .filter((row) => !row.textContent?.includes("Discount Percentage"))
+          .map((row) => {
+            const label = row.querySelector("th")?.textContent?.trim();
+            const value = row.querySelector("td")?.textContent?.trim();
+            return label && value ? `${label} ${value}` : null;
+          })
+          .filter((text) => text !== null)
+          .join(", ");
+      });
+
+      // Combine the initial description with the additional attributes
+      const description =
+        `${startingDescription} ${additionalAttributes}`.trim();
+
+      const imageUrls = await page.$$eval("a.mt-thumb-switcher", (anchors) =>
+        anchors
+          .map((anchor) => {
+            const dataImage = anchor.getAttribute("data-image");
+            return dataImage
+              ? dataImage.startsWith("//")
+                ? "https:" + dataImage
+                : dataImage
+              : null;
+          })
+          .filter((url) => url !== null)
       );
 
       return { description, imageUrls };
@@ -131,10 +259,19 @@ const crawler = new PlaywrightCrawler({
     await enqueueLinks({
       strategy: "same-hostname",
 
-      globs: ["https://pk.khaadi.com/*", "https://www.sanasafinaz.com/pk/*"],
+      globs: [
+        "https://pk.khaadi.com/*",
+        "https://www.sanasafinaz.com/pk/*",
+        "https://www.mariab.pk/*",
+        "https://www.mariab.pk/pages/*",
+        "https://www.mariab.pk/collections/*",
+        "https://www.mariab.pk/products/*",
+        "https://www.gulahmedshop.com/*",
+      ],
       exclude: [
-        "https://www.sanasafinaz.com/pk/kids*",
-        "https://www.sanasafinaz.com/pk/fragrances*",
+        ...exclusions.sanaSafinaz,
+        ...exclusions.mariaB,
+        ...exclusions.gulAhmed,
       ],
       //   transformRequestFunction: (request) => {
       //     console.log(`Enqueuing URL: ${request.url}`);
@@ -151,9 +288,9 @@ const crawler = new PlaywrightCrawler({
 // List of initial URLs to crawl
 const startUrls = [
   //   "https://pk.khaadi.com/",
-  "https://www.sanasafinaz.com/pk/",
+  //   "https://www.sanasafinaz.com/pk/",
   //   "https://www.mariab.pk/",
-  //   "https://www.gulahmedshop.com/",
+  "https://www.gulahmedshop.com/",
   //   "https://nishatlinen.com/",
   //   "https://pk.sapphireonline.pk/",
   //   "https://bareeze.com/",
