@@ -103,6 +103,8 @@ const exclusions = {
     "https://www.junaidjamshed.com/catalogue/**",
     "https://www.junaidjamshed.com/sale/teen-girls/**",
     "https://www.junaidjamshed.com/sale/kid-girls/**",
+    "https://www.junaidjamshed.com/vibe-tribe-24/**",
+    "https://www.junaidjamshed.com/new-arrivals/featured-collection/expression-series-all-ages-of-him.html",
   ],
   asimJofa: [
     "https://asimjofa.com/collections/kids-pret/**",
@@ -480,19 +482,47 @@ const extractors = {
       //     return {};
       //   }
 
-      const elements = await page.$$(
-        "h1, div.product.sku, .product.overview, .additional-attributes-wrapper"
-      );
-      let description = "";
+      // const elements = await page.$$(
+      //   "h1, div.product.sku, .product.overview, .additional-attributes-wrapper"
+      // );
+      // let description = "";
 
-      for (const element of elements) {
-        const text = await element.textContent();
-        if (text) {
-          description += text.trim() + " ";
-        }
+      // for (const element of elements) {
+      //   const text = await element.textContent();
+      //   if (text) {
+      //     description += text.trim() + " ";
+      //   }
+      // }
+
+      // description = description.trim();
+
+      // Get the title text
+      const title = await page.locator("h1.page-title").innerText();
+
+      // Get the description text
+      const descriptionText = await page
+        .locator('div.value[itemprop="description"]')
+        .innerText();
+
+      // Get additional information from the table
+      const additionalInfoRows = await page.locator(
+        "table#product-attribute-specs-table tbody tr"
+      );
+      const additionalInfoTexts = [];
+
+      const rowCount = await additionalInfoRows.count();
+
+      for (let i = 0; i < rowCount; i++) {
+        const row = additionalInfoRows.nth(i);
+        const thText = await row.locator("th").innerText();
+        const tdText = await row.locator("td").innerText();
+        additionalInfoTexts.push(`${thText}: ${tdText}`);
       }
 
-      description = description.trim();
+      const additionalInfo = additionalInfoTexts.join("\n");
+
+      // Combine all the text into a single description constant
+      const description = `${title}\n\n${descriptionText}\n\n${additionalInfo}`;
 
       const imageUrls = await page.evaluate(() => {
         const container = document.querySelector(
@@ -514,7 +544,7 @@ const extractors = {
 
       return { description, imageUrls };
     } catch (error) {
-      console.error(error);
+      // console.error(error);
       return {};
     }
   },
@@ -659,17 +689,16 @@ const crawler = new PlaywrightCrawler({
 
 // List of initial URLs to crawl
 const startUrls = [
-  // "https://pk.khaadi.com/",
-  // "https://www.sanasafinaz.com/pk/",
-  // "https://www.mariab.pk/",
-  // "https://www.gulahmedshop.com/",
-  // "https://nishatlinen.com/",
-  // "https://pk.sapphireonline.pk/",
-  // "https://bareeze.com/",
-  // "https://asimjofa.com/",
-
-  "https://www.junaidjamshed.com/",
-  // "https://www.alkaramstudio.com/",
+  "https://pk.khaadi.com/",
+  "https://www.sanasafinaz.com/pk/",
+  "https://www.mariab.pk/",
+  "https://www.gulahmedshop.com/",
+  "https://nishatlinen.com/",
+  "https://pk.sapphireonline.pk/",
+  "https://bareeze.com/",
+  "https://asimjofa.com/",
+  "https://www.junaidjamshed.com/women-collections",
+  "https://www.alkaramstudio.com/",
 ];
 
 // Add first URL to the queue and start the crawl.
