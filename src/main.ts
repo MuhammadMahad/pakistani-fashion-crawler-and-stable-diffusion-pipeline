@@ -381,7 +381,7 @@ const extractors = {
 
       return { description, imageUrls };
     } catch (error) {
-      console.error(error);
+      // console.error(error);
       return {};
     }
   },
@@ -454,12 +454,9 @@ const extractors = {
           .filter((src) => src); // Ensure no null or undefined values
       });
 
-      console.log("description", description);
-      console.log("imageUrls", imageUrls);
-
       return { description, imageUrls };
     } catch (error) {
-      console.error(error);
+      // console.error(error);
       return {};
     }
   },
