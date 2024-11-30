@@ -467,35 +467,6 @@ const extractors = {
     // things to improve:
     // doesnt work, crawler shuts down after first page
     try {
-      //   const currentURL = page.url();
-      //   console.log("currentURL", currentURL);
-      //   if (currentURL === "https://www.junaidjamshed.com/select-country") {
-      //     const enterButton = page.locator("text=ENTER");
-      //     await enterButton.waitFor({ state: "visible" });
-
-      //     // Click the "ENTER" button
-      //     await enterButton.click();
-      //     // await enterButton.click();
-
-      //     // Wait for navigation to complete
-      //     await page.waitForNavigation();
-      //     return {};
-      //   }
-
-      // const elements = await page.$$(
-      //   "h1, div.product.sku, .product.overview, .additional-attributes-wrapper"
-      // );
-      // let description = "";
-
-      // for (const element of elements) {
-      //   const text = await element.textContent();
-      //   if (text) {
-      //     description += text.trim() + " ";
-      //   }
-      // }
-
-      // description = description.trim();
-
       // Get the title text
       const title = await page.locator("h1.page-title").innerText();
 
@@ -622,7 +593,7 @@ const crawler = new PlaywrightCrawler({
   useSessionPool: true,
   persistCookiesPerSession: true,
   // Use the requestHandler to process each of the crawled pages.
-  async requestHandler({ request, session, page, enqueueLinks, log }) {
+  async requestHandler({ request, page, enqueueLinks, log }) {
     const title = await page.title();
     log.info(`Title of ${request.loadedUrl} is '${title}'`);
 
