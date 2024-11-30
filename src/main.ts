@@ -482,7 +482,7 @@ const extractors = {
       //   }
 
       const elements = await page.$$(
-        "h1, div.product.sku, .product.overview, .product-info-main-extend"
+        "h1, div.product.sku, .product.overview, .additional-attributes-wrapper"
       );
       let description = "";
 
