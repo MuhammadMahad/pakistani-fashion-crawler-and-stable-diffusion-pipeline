@@ -20,6 +20,12 @@ const globs = {
     "https://nishatlinen.com/collections/*/products/**",
   ],
   sapphire: ["https://pk.sapphireonline.pk/collections/*/products/**"],
+  bareeze: ["https://bareeze.com/**"],
+  junaidJamshed: ["https://www.junaidjamshed.com**"],
+  asimJofa: [
+    "https://asimjofa.com/collections/**",
+    "https://asimjofa.com/collections/*/products/**",
+  ],
 };
 
 const exclusions = {
@@ -81,6 +87,25 @@ const exclusions = {
     "https://pk.sapphireonline.pk/collections/fruity-fragrances**",
     "https://pk.sapphireonline.pk/collections/oriental-fragrances**",
     "https://pk.sapphireonline.pk/collections/woody-fragrances**",
+  ],
+  bareeze: ["https://bareeze.com/catalogue/bareeze-lookbook.pdf"],
+  junaidJamshed: [
+    "https://www.junaidjamshed.com/new-arrivals/boys-girls-winter-tales-24**",
+    "https://www.junaidjamshed.com/womens/mama-me**",
+    "https://www.junaidjamshed.com/boys-girls-collection**",
+    "https://www.junaidjamshed.com/boys-girls**",
+    "https://www.junaidjamshed.com/fragrances**",
+    "https://www.junaidjamshed.com/makeup**",
+    "https://www.junaidjamshed.com/skin-care**",
+    "https://www.junaidjamshed.com/catalogue**",
+    "https://www.junaidjamshed.com/sale/teen-girls**",
+    "https://www.junaidjamshed.com/sale/kid-girls**",
+  ],
+  asimJofa: [
+    "https://asimjofa.com/collections/kids-pret**",
+    "https://asimjofa.com/collections/asim-jofa-kids-collection**",
+    "https://asimjofa.com/collections/kids-unstitched**",
+    "https://asimjofa.com/collections/kids-ready-to-wear**",
   ],
 };
 
@@ -333,8 +358,6 @@ const extractors = {
             )
             .filter(Boolean) // Remove null/undefined values
       );
-      //   console.log("description", description);
-      //   console.log("imageUrls", imageUrls);
 
       return { description, imageUrls };
     } catch (error) {
@@ -342,15 +365,180 @@ const extractors = {
       return {};
     }
   },
+  "bareeze.com": async (page: Page) => {
+    // things to improve:
+    // crawl keeps failing after 150 links. maybe because of infinte scroll pagination but not sure.
+    try {
+      //infinite scroll function for bareeze's infinite scroll
 
+      // Function to perform infinite scrolling
+      async function infiniteScroll(page: Page) {
+        let previousHeight;
+        while (true) {
+          // Scroll down to the bottom of the page
+          await page.evaluate(() => {
+            window.scrollBy(0, window.innerHeight);
+          });
+          // Wait for new content to load
+          await page.waitForTimeout(3000); // Adjust timeout as needed
+          // Check if we've reached the bottom of the page
+          const currentHeight = await page.evaluate(
+            () => document.body.scrollHeight
+          );
+          if (currentHeight === previousHeight) {
+            break;
+          }
+          previousHeight = currentHeight;
+        }
+      }
+
+      // Perform infinite scroll to load all content
+      await infiniteScroll(page);
+
+      // Define the selectors you want to target
+      const selectors = [
+        "h1",
+        "div.product-sku",
+        ".accordion-description-content",
+      ];
+
+      // Initialize an array to hold the text contents
+      let textContents = [];
+
+      // Iterate over each selector
+      for (const selector of selectors) {
+        // Retrieve all elements matching the current selector
+        const elements = await page.locator(selector).elementHandles();
+
+        // Extract text content from each element
+        for (const element of elements) {
+          const text = await element.textContent();
+          if (text) {
+            // Trim and add the text to the array
+            textContents.push(text.trim());
+          }
+        }
+      }
+
+      // Join all text contents with a space separator
+      const description = textContents.join(" ");
+
+      const imageUrls = await page.evaluate(() => {
+        // Select all img tags inside the specified container
+        const images = document.querySelectorAll("div.ImagesGrid img");
+
+        // Extract the src attribute from each img tag
+        return Array.from(images)
+          .map((img) => img.getAttribute("src")) // Get the src attribute
+          .filter((src) => src); // Ensure no null or undefined values
+      });
+
+      console.log("description", description);
+      console.log("imageUrls", imageUrls);
+
+      return { description, imageUrls };
+    } catch (error) {
+      console.error(error);
+      return {};
+    }
+  },
+  "junaidjamshed.com": async (page: Page) => {
+    // things to improve:
+    // doesnt work, crawler shuts down after first page
+    try {
+      //   const currentURL = page.url();
+      //   console.log("currentURL", currentURL);
+      //   if (currentURL === "https://www.junaidjamshed.com/select-country") {
+      //     const enterButton = page.locator("text=ENTER");
+      //     await enterButton.waitFor({ state: "visible" });
+
+      //     // Click the "ENTER" button
+      //     await enterButton.click();
+      //     // await enterButton.click();
+
+      //     // Wait for navigation to complete
+      //     await page.waitForNavigation();
+      //     return {};
+      //   }
+
+      const elements = await page.$$(
+        "h1, div.product-sku, .accordion-description-content"
+      );
+      let description = "";
+
+      for (const element of elements) {
+        const text = await element.textContent();
+        if (text) {
+          description += text.trim() + " ";
+        }
+      }
+
+      description = description.trim();
+
+      const imageUrls = await page.evaluate(() => {
+        const container = document.querySelector(
+          ".MagicToolboxSelectorsContainer"
+        );
+        if (!container) return [];
+
+        // Get all <a> elements within the container
+        const links = container.querySelectorAll("a.mt-thumb-switcher");
+
+        // Extract 'data-image' or 'href' attributes
+        return Array.from(links)
+          .map(
+            (link) =>
+              link.getAttribute("data-image") || link.getAttribute("href")
+          )
+          .filter((url) => url); // Ensure only valid URLs are returned
+      });
+
+      return { description, imageUrls };
+    } catch (error) {
+      console.error(error);
+      return {};
+    }
+  },
+  "asimjofa.com": async (page: Page) => {
+    // things to improve:
+    try {
+      // Extract text from the specified elements
+      const title = await page.$eval("h1.t4s-product__title", (el) =>
+        el.textContent?.trim()
+      );
+      const details = await page.$$eval(".t4s-pr__custom-liquid .skus", (els) =>
+        els.map((el) => el.textContent?.trim()).join(" ")
+      );
+      const partialDescription = await page.$eval(".panel", (el) =>
+        el.textContent?.trim()
+      );
+
+      // Combine the extracted text into a single description
+      const description = `${title}\n\n${details}\n\n${partialDescription}`;
+
+      const imageUrls = await page.$$eval(
+        '#pinchdiv [data-product-single-media-wrapper][data-media-type="image"] img[data-master]',
+        (imgs) => imgs.map((img) => "https:" + img.getAttribute("data-master"))
+      );
+
+      return { description, imageUrls };
+    } catch (error) {
+      //   console.error(error);
+      return {};
+    }
+  },
   // Define extractors for other domains
 };
 
 // PlaywrightCrawler crawls the web using a headless
 // browser controlled by the Playwright library.
 const crawler = new PlaywrightCrawler({
+  useSessionPool: true,
+  persistCookiesPerSession: true,
   // Use the requestHandler to process each of the crawled pages.
-  async requestHandler({ request, page, enqueueLinks, log }) {
+  async requestHandler({ request, session, page, enqueueLinks, log }) {
+    await page.waitForLoadState("networkidle");
+
     const title = await page.title();
     log.info(`Title of ${request.loadedUrl} is '${title}'`);
 
@@ -360,7 +548,6 @@ const crawler = new PlaywrightCrawler({
     const extractor = extractors[domain as keyof typeof extractors];
 
     // Save results as JSON to ./storage/datasets/default
-    // await pushData({ title, url: request.loadedUrl });
     if (extractor) {
       const data = await extractor(page);
       if (data.description && data.imageUrls.length) {
@@ -388,6 +575,9 @@ const crawler = new PlaywrightCrawler({
         ...globs.gulAhmed,
         ...globs.nishatlinen,
         ...globs.sapphire,
+        ...globs.bareeze,
+        ...globs.junaidJamshed,
+        ...globs.asimJofa,
       ],
       exclude: [
         ...exclusions.khaadi,
@@ -395,6 +585,9 @@ const crawler = new PlaywrightCrawler({
         ...exclusions.mariaB,
         ...exclusions.gulAhmed,
         ...exclusions.sapphire,
+        ...exclusions.bareeze,
+        ...exclusions.junaidJamshed,
+        ...exclusions.asimJofa,
       ],
       //   transformRequestFunction: (request) => {
       //     console.log(`Enqueuing URL: ${request.url}`);
@@ -417,9 +610,10 @@ const startUrls = [
   //   "https://nishatlinen.com/",
   //   "https://pk.sapphireonline.pk/",
 
-  "https://bareeze.com/",
+  //   "https://bareeze.com/",
+
   //   "https://www.junaidjamshed.com/",
-  //   "https://asimjofa.com/",
+  "https://asimjofa.com/",
   //   "https://www.alkaramstudio.com/",
 ];
 
