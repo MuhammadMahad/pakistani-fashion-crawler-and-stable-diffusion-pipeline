@@ -26,6 +26,10 @@ const globs = {
     "https://asimjofa.com/collections/**",
     "https://asimjofa.com/collections/*/products/**",
   ],
+  alkaramStudio: [
+    "https://www.alkaramstudio.com/collections/**",
+    "https://www.alkaramstudio.com/collections/*/products/**",
+  ],
 };
 
 const exclusions = {
@@ -106,6 +110,21 @@ const exclusions = {
     "https://asimjofa.com/collections/asim-jofa-kids-collection**",
     "https://asimjofa.com/collections/kids-unstitched**",
     "https://asimjofa.com/collections/kids-ready-to-wear**",
+  ],
+  alkaramStudio: [
+    "https://www.alkaramstudio.com/collections/sale-kids**",
+    "https://www.alkaramstudio.com/collections/sale-boys**",
+    "https://www.alkaramstudio.com/collections/sale-girls**",
+    "https://www.alkaramstudio.com/collections/new-in-kids**",
+    "https://www.alkaramstudio.com/collections/new-in-boys**",
+    "https://www.alkaramstudio.com/collections/new-in-girls**",
+    "https://www.alkaramstudio.com/collections/beauty**",
+    "https://www.alkaramstudio.com/collections/maybelline**",
+    "https://www.alkaramstudio.com/collections/fragrance**",
+    "https://www.alkaramstudio.com/collections/nail-colors**",
+    "https://www.alkaramstudio.com/collections/mak-kids**",
+    "https://www.alkaramstudio.com/collections/mak-girl**",
+    "https://www.alkaramstudio.com/collections/mak-boys**",
   ],
 };
 
@@ -368,6 +387,7 @@ const extractors = {
   "bareeze.com": async (page: Page) => {
     // things to improve:
     // crawl keeps failing after 150 links. maybe because of infinte scroll pagination but not sure.
+    // remove ids like SKU: MC1206-Brown besides the color
     try {
       //infinite scroll function for bareeze's infinite scroll
 
@@ -501,6 +521,7 @@ const extractors = {
   },
   "asimjofa.com": async (page: Page) => {
     // things to improve:
+    // remove id like AJCD-08
     try {
       // Extract text from the specified elements
       const title = await page.$eval("h1.t4s-product__title", (el) =>
@@ -523,7 +544,43 @@ const extractors = {
 
       return { description, imageUrls };
     } catch (error) {
-      //   console.error(error);
+      return {};
+    }
+  },
+  "alkaramstudio.com": async (page: Page) => {
+    // things to improve:
+    // Remove ids from description without removing the color text in them
+    // out of memory error
+    try {
+      const description = await page.$eval(
+        "#t4s-tab-destemplate--16602647167156__main",
+        (el: HTMLElement) => {
+          // Retrieve the text content of the element
+          let text = el.innerText;
+
+          // Replace multiple whitespace characters with a single space
+          text = text.replace(/\s+/g, " ").trim();
+
+          return text;
+        }
+      );
+
+      const imageUrls = await page.$$eval(
+        '[data-thumb__scroller="template--16602647167156__main"] .t4s-carousel__nav-item img',
+        (imgs) => {
+          return imgs.map((img) => {
+            let src = img.getAttribute("src");
+            let url = src?.replace(/&width=\d+/, "");
+            if (url?.startsWith("//")) {
+              url = "https:" + url;
+            }
+            return url;
+          });
+        }
+      );
+
+      return { description, imageUrls };
+    } catch (error) {
       return {};
     }
   },
@@ -578,6 +635,7 @@ const crawler = new PlaywrightCrawler({
         ...globs.bareeze,
         ...globs.junaidJamshed,
         ...globs.asimJofa,
+        ...globs.alkaramStudio,
       ],
       exclude: [
         ...exclusions.khaadi,
@@ -588,6 +646,7 @@ const crawler = new PlaywrightCrawler({
         ...exclusions.bareeze,
         ...exclusions.junaidJamshed,
         ...exclusions.asimJofa,
+        ...exclusions.alkaramStudio,
       ],
       //   transformRequestFunction: (request) => {
       //     console.log(`Enqueuing URL: ${request.url}`);
@@ -613,8 +672,9 @@ const startUrls = [
   //   "https://bareeze.com/",
 
   //   "https://www.junaidjamshed.com/",
-  "https://asimjofa.com/",
-  //   "https://www.alkaramstudio.com/",
+
+  //   "https://asimjofa.com/",
+  "https://www.alkaramstudio.com/",
 ];
 
 // Add first URL to the queue and start the crawl.
