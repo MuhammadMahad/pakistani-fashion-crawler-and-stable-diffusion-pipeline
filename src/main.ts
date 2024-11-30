@@ -21,7 +21,7 @@ const globs = {
   ],
   sapphire: ["https://pk.sapphireonline.pk/collections/*/products/**"],
   bareeze: ["https://bareeze.com/**"],
-  junaidJamshed: ["https://www.junaidjamshed.com**"],
+  junaidJamshed: ["https://www.junaidjamshed.com/**"],
   asimJofa: [
     "https://asimjofa.com/collections/**",
     "https://asimjofa.com/collections/*/products/**",
@@ -482,7 +482,7 @@ const extractors = {
       //   }
 
       const elements = await page.$$(
-        "h1, div.product-sku, .accordion-description-content"
+        "h1, div.product.sku, .product.overview, .product-info-main-extend"
       );
       let description = "";
 
@@ -508,7 +508,7 @@ const extractors = {
         return Array.from(links)
           .map(
             (link) =>
-              link.getAttribute("data-image") || link.getAttribute("href")
+              link.getAttribute("href") || link.getAttribute("data-image")
           )
           .filter((url) => url); // Ensure only valid URLs are returned
       });
@@ -657,7 +657,7 @@ const crawler = new PlaywrightCrawler({
   // Comment this option to scrape the full website.
   //   maxRequestsPerCrawl: 20,
   // Uncomment this option to see the browser window.
-  //   headless: false,
+    headless: false,
 });
 
 // List of initial URLs to crawl
@@ -671,10 +671,10 @@ const startUrls = [
 
   //   "https://bareeze.com/",
 
-  //   "https://www.junaidjamshed.com/",
+    "https://www.junaidjamshed.com/",
 
   //   "https://asimjofa.com/",
-  "https://www.alkaramstudio.com/",
+  // "https://www.alkaramstudio.com/",
 ];
 
 // Add first URL to the queue and start the crawl.
