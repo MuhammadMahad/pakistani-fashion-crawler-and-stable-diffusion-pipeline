@@ -594,8 +594,6 @@ const crawler = new PlaywrightCrawler({
   persistCookiesPerSession: true,
   // Use the requestHandler to process each of the crawled pages.
   async requestHandler({ request, session, page, enqueueLinks, log }) {
-    await page.waitForLoadState("networkidle");
-
     const title = await page.title();
     log.info(`Title of ${request.loadedUrl} is '${title}'`);
 
@@ -657,24 +655,22 @@ const crawler = new PlaywrightCrawler({
   // Comment this option to scrape the full website.
   //   maxRequestsPerCrawl: 20,
   // Uncomment this option to see the browser window.
-  //   headless: false,
+  // headless: false,
 });
 
 // List of initial URLs to crawl
 const startUrls = [
-  //   "https://pk.khaadi.com/",
-  //   "https://www.sanasafinaz.com/pk/",
-  //   "https://www.mariab.pk/",
-  //   "https://www.gulahmedshop.com/",
-  //   "https://nishatlinen.com/",
-  //   "https://pk.sapphireonline.pk/",
-
-  //   "https://bareeze.com/",
+  "https://pk.khaadi.com/",
+  "https://www.sanasafinaz.com/pk/",
+  "https://www.mariab.pk/",
+  "https://www.gulahmedshop.com/",
+  "https://nishatlinen.com/",
+  "https://pk.sapphireonline.pk/",
+  "https://bareeze.com/",
+  "https://asimjofa.com/",
 
   //   "https://www.junaidjamshed.com/",
-
-  //   "https://asimjofa.com/",
-  "https://www.alkaramstudio.com/",
+  // "https://www.alkaramstudio.com/",
 ];
 
 // Add first URL to the queue and start the crawl.
