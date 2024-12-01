@@ -1,7 +1,8 @@
 // For more information, see https://crawlee.dev/
 import { Actor } from "apify";
-import { Dataset, PlaywrightCrawler } from "crawlee";
+import { CheerioCrawler, Dataset, PlaywrightCrawler } from "crawlee";
 import { Page } from "playwright";
+import { type CheerioRoot } from '@crawlee/utils';
 
 await Actor.init();
 
@@ -461,63 +462,6 @@ const extractors = {
       return {};
     }
   },
-  "junaidjamshed.com": async (page: Page) => {
-    // things to improve:
-    // doesnt work, crawler shuts down after first page
-    try {
-      //   const currentURL = page.url();
-      //   console.log("currentURL", currentURL);
-      //   if (currentURL === "https://www.junaidjamshed.com/select-country") {
-      //     const enterButton = page.locator("text=ENTER");
-      //     await enterButton.waitFor({ state: "visible" });
-
-      //     // Click the "ENTER" button
-      //     await enterButton.click();
-      //     // await enterButton.click();
-
-      //     // Wait for navigation to complete
-      //     await page.waitForNavigation();
-      //     return {};
-      //   }
-
-      const elements = await page.$$(
-        "h1, div.product.sku, .product.overview, .additional-attributes-wrapper"
-      );
-      let description = "";
-
-      for (const element of elements) {
-        const text = await element.textContent();
-        if (text) {
-          description += text.trim() + " ";
-        }
-      }
-
-      description = description.trim();
-
-      const imageUrls = await page.evaluate(() => {
-        const container = document.querySelector(
-          ".MagicToolboxSelectorsContainer"
-        );
-        if (!container) return [];
-
-        // Get all <a> elements within the container
-        const links = container.querySelectorAll("a.mt-thumb-switcher");
-
-        // Extract 'data-image' or 'href' attributes
-        return Array.from(links)
-          .map(
-            (link) =>
-              link.getAttribute("href") || link.getAttribute("data-image")
-          )
-          .filter((url) => url); // Ensure only valid URLs are returned
-      });
-
-      return { description, imageUrls };
-    } catch (error) {
-      console.error(error);
-      return {};
-    }
-  },
   "asimjofa.com": async (page: Page) => {
     // things to improve:
     // remove id like AJCD-08
@@ -585,6 +529,52 @@ const extractors = {
   },
   // Define extractors for other domains
 };
+
+const cheerioExtractors = {
+  "junaidjamshed.com": async ($: CheerioRoot) => {
+    // things to improve:
+    // doesnt work, crawler shuts down after first page
+    try {
+      //   const currentURL = page.url();
+      //   console.log("currentURL", currentURL);
+      //   if (currentURL === "https://www.junaidjamshed.com/select-country") {
+      //     const enterButton = page.locator("text=ENTER");
+      //     await enterButton.waitFor({ state: "visible" });
+
+      //     // Click the "ENTER" button
+      //     await enterButton.click();
+      //     // await enterButton.click();
+
+      //     // Wait for navigation to complete
+      //     await page.waitForNavigation();
+      //     return {};
+      //   }
+
+      let description = "";
+      await $(
+        "h1, div.product.sku, .product.overview, .additional-attributes-wrapper"
+      ).each((index, element) => {
+        const text = $(element).text();
+        if (text) {
+          description += text.trim() + " ";
+        }
+      });
+
+      description = description.trim();
+
+      let imageUrls = []
+      $("a.mt-thumb-switcher").each((index, element) => {
+        imageUrls.push($(element).attr('href') || $(element).attr('data-image'))
+      })
+      imageUrls = imageUrls.filter(Boolean)
+      console.log({description, imageUrls})
+      return { description, imageUrls };
+    } catch (error) {
+      console.error(error);
+      return {};
+    }
+  },
+}
 
 // PlaywrightCrawler crawls the web using a headless
 // browser controlled by the Playwright library.
@@ -657,8 +647,78 @@ const crawler = new PlaywrightCrawler({
   // headless: false,
 });
 
+const cheerioCrawler = new CheerioCrawler({
+  useSessionPool: true,
+  persistCookiesPerSession: true,
+  // Use the requestHandler to process each of the crawled pages.
+  async requestHandler({ request, session, $, enqueueLinks, log }) {
+    
+    const title = $('title').text()
+    log.info(`Title of ${request.loadedUrl} is '${title}'`);
+
+    const { hostname } = new URL(request.url);
+    const domain = hostname.replace("www.", "");
+
+    const cheerioExtractor = cheerioExtractors[domain as keyof typeof extractors];
+
+    // Save results as JSON to ./storage/datasets/default
+    if (cheerioExtractor) {
+      const data = await cheerioExtractor($);
+      if (data.description && data.imageUrls.length) {
+        await Dataset.pushData({
+          domain: domain,
+          url: request.url,
+          ...data,
+        });
+        console.log("data", data);
+      }
+    } else {
+      log.warning(`No extractor defined for domain: ${domain}`);
+    }
+
+    // Extract links from the current page
+    // and add them to the crawling queue.
+
+    await enqueueLinks({
+      strategy: "same-hostname",
+
+      globs: [
+        ...globs.khaadi,
+        ...globs.sanaSafinaz,
+        ...globs.mariaB,
+        ...globs.gulAhmed,
+        ...globs.nishatlinen,
+        ...globs.sapphire,
+        ...globs.bareeze,
+        ...globs.junaidJamshed,
+        ...globs.asimJofa,
+        ...globs.alkaramStudio,
+      ],
+      exclude: [
+        ...exclusions.khaadi,
+        ...exclusions.sanaSafinaz,
+        ...exclusions.mariaB,
+        ...exclusions.gulAhmed,
+        ...exclusions.sapphire,
+        ...exclusions.bareeze,
+        ...exclusions.junaidJamshed,
+        ...exclusions.asimJofa,
+        ...exclusions.alkaramStudio,
+      ],
+      //   transformRequestFunction: (request) => {
+      //     console.log(`Enqueuing URL: ${request.url}`);
+      //     return request;
+      // },
+    });
+  },
+  // Comment this option to scrape the full website.
+  //   maxRequestsPerCrawl: 20,
+  // Uncomment this option to see the browser window.
+  // headless: false,
+});
+
 // List of initial URLs to crawl
-const startUrls = [
+const playWrightStartUrls = [
   // "https://pk.khaadi.com/",
   // "https://www.sanasafinaz.com/pk/",
   // "https://www.mariab.pk/",
@@ -667,12 +727,26 @@ const startUrls = [
   // "https://pk.sapphireonline.pk/",
   // "https://bareeze.com/",
   // "https://asimjofa.com/",
-
-  "https://www.junaidjamshed.com/",
   // "https://www.alkaramstudio.com/",
 ];
+const cheerioStartUrls = [
+  "https://www.junaidjamshed.com/women-collections",
+]
+
+const promiseList = []
+
+if (cheerioStartUrls.length) {
+  promiseList.push(cheerioCrawler.run(cheerioStartUrls))
+}
+
+if (playWrightStartUrls.length) {
+  promiseList.push(crawler.run(playWrightStartUrls))
+}
+
+if (promiseList.length) {
+  await Promise.all(promiseList)
+}
 
 // Add first URL to the queue and start the crawl.
-await crawler.run(startUrls);
 
 await Actor.exit();
