@@ -593,7 +593,7 @@ const cheerioExtractors = {
       const title = $('h1.page-title').text() || ''
       const desc = $('div.value[itemprop="description"]').text() || ''
     
-      const additionalInfoTexts = [];
+      const additionalInfoTexts: string[] = [];
       $("table#product-attribute-specs-table tbody tr").each((index, element) => {
         const thText =  $(element).find('th').text();
         const tdText = $(element).find('td').text();
@@ -605,9 +605,9 @@ const cheerioExtractors = {
 
       description = description.trim();
 
-      let imageUrls = []
+      let imageUrls: string[] = []
       $("a.mt-thumb-switcher").each((index, element) => {
-        imageUrls.push($(element).attr('href') || $(element).attr('data-image'))
+        imageUrls.push($(element).attr('href') || $(element).attr('data-image') || '')
       })
       imageUrls = imageUrls.filter(Boolean)
       return { description, imageUrls };
@@ -701,7 +701,7 @@ const cheerioCrawler = new CheerioCrawler({
     const { hostname } = new URL(request.url);
     const domain = hostname.replace("www.", "");
 
-    const cheerioExtractor = cheerioExtractors[domain as keyof typeof extractors];
+    const cheerioExtractor = cheerioExtractors[domain as keyof typeof cheerioExtractors];
 
     // Save results as JSON to ./storage/datasets/default
     if (cheerioExtractor) {
@@ -760,7 +760,7 @@ const cheerioCrawler = new CheerioCrawler({
 });
 
 // List of initial URLs to crawl
-const playWrightStartUrls = [
+const playWrightStartUrls: string[] = [
   // "https://pk.khaadi.com/",
   // "https://www.sanasafinaz.com/pk/",
   // "https://www.mariab.pk/",
@@ -771,7 +771,7 @@ const playWrightStartUrls = [
   // "https://asimjofa.com/",
   // "https://www.alkaramstudio.com/",
 ];
-const cheerioStartUrls = [
+const cheerioStartUrls: string[] = [
   "https://www.junaidjamshed.com/women-collections",
 ]
 
