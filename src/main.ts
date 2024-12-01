@@ -104,6 +104,8 @@ const exclusions = {
     "https://www.junaidjamshed.com/catalogue/**",
     "https://www.junaidjamshed.com/sale/teen-girls/**",
     "https://www.junaidjamshed.com/sale/kid-girls/**",
+    "https://www.junaidjamshed.com/vibe-tribe-24/**",
+    "https://www.junaidjamshed.com/new-arrivals/featured-collection/expression-series-all-ages-of-him.html",
   ],
   asimJofa: [
     "https://asimjofa.com/collections/kids-pret/**",
@@ -380,7 +382,7 @@ const extractors = {
 
       return { description, imageUrls };
     } catch (error) {
-      console.error(error);
+      // console.error(error);
       return {};
     }
   },
@@ -453,15 +455,68 @@ const extractors = {
           .filter((src) => src); // Ensure no null or undefined values
       });
 
-      console.log("description", description);
-      console.log("imageUrls", imageUrls);
-
       return { description, imageUrls };
     } catch (error) {
-      console.error(error);
+      // console.error(error);
       return {};
     }
   },
+  // "junaidjamshed.com": async (page: Page) => {
+  //   // things to improve:
+  //   // doesnt work, crawler shuts down after first page
+  //   try {
+  //     // Get the title text
+  //     const title = await page.locator("h1.page-title").innerText();
+
+  //     // Get the description text
+  //     const descriptionText = await page
+  //       .locator('div.value[itemprop="description"]')
+  //       .innerText();
+
+  //     // Get additional information from the table
+  //     const additionalInfoRows = await page.locator(
+  //       "table#product-attribute-specs-table tbody tr"
+  //     );
+  //     const additionalInfoTexts = [];
+
+  //     const rowCount = await additionalInfoRows.count();
+
+  //     for (let i = 0; i < rowCount; i++) {
+  //       const row = additionalInfoRows.nth(i);
+  //       const thText = await row.locator("th").innerText();
+  //       const tdText = await row.locator("td").innerText();
+  //       additionalInfoTexts.push(`${thText}: ${tdText}`);
+  //     }
+
+  //     const additionalInfo = additionalInfoTexts.join("\n");
+
+  //     // Combine all the text into a single description constant
+  //     const description = `${title}\n\n${descriptionText}\n\n${additionalInfo}`;
+
+  //     const imageUrls = await page.evaluate(() => {
+  //       const container = document.querySelector(
+  //         ".MagicToolboxSelectorsContainer"
+  //       );
+  //       if (!container) return [];
+
+  //       // Get all <a> elements within the container
+  //       const links = container.querySelectorAll("a.mt-thumb-switcher");
+
+  //       // Extract 'data-image' or 'href' attributes
+  //       return Array.from(links)
+  //         .map(
+  //           (link) =>
+  //             link.getAttribute("href") || link.getAttribute("data-image")
+  //         )
+  //         .filter((url) => url); // Ensure only valid URLs are returned
+  //     });
+
+  //     return { description, imageUrls };
+  //   } catch (error) {
+  //     // console.error(error);
+  //     return {};
+  //   }
+  // },
   "asimjofa.com": async (page: Page) => {
     // things to improve:
     // remove id like AJCD-08
@@ -535,30 +590,18 @@ const cheerioExtractors = {
     // things to improve:
     // doesnt work, crawler shuts down after first page
     try {
-      //   const currentURL = page.url();
-      //   console.log("currentURL", currentURL);
-      //   if (currentURL === "https://www.junaidjamshed.com/select-country") {
-      //     const enterButton = page.locator("text=ENTER");
-      //     await enterButton.waitFor({ state: "visible" });
+      const title = $('h1.page-title').text() || ''
+      const desc = $('div.value[itemprop="description"]').text() || ''
+    
+      const additionalInfoTexts = [];
+      $("table#product-attribute-specs-table tbody tr").each((index, element) => {
+        const thText =  $(element).find('th').text();
+        const tdText = $(element).find('td').text();
+        additionalInfoTexts.push(`${thText}: ${tdText}`);
 
-      //     // Click the "ENTER" button
-      //     await enterButton.click();
-      //     // await enterButton.click();
-
-      //     // Wait for navigation to complete
-      //     await page.waitForNavigation();
-      //     return {};
-      //   }
-
-      let description = "";
-      await $(
-        "h1, div.product.sku, .product.overview, .additional-attributes-wrapper"
-      ).each((index, element) => {
-        const text = $(element).text();
-        if (text) {
-          description += text.trim() + " ";
-        }
-      });
+      })
+      const additionalInfo = additionalInfoTexts.join("\n");
+      let description = `${title}\n\n${desc}\n\n${additionalInfo}`;
 
       description = description.trim();
 
@@ -582,7 +625,7 @@ const crawler = new PlaywrightCrawler({
   useSessionPool: true,
   persistCookiesPerSession: true,
   // Use the requestHandler to process each of the crawled pages.
-  async requestHandler({ request, session, page, enqueueLinks, log }) {
+  async requestHandler({ request, page, enqueueLinks, log }) {
     const title = await page.title();
     log.info(`Title of ${request.loadedUrl} is '${title}'`);
 
