@@ -610,7 +610,6 @@ const cheerioExtractors = {
         imageUrls.push($(element).attr('href') || $(element).attr('data-image'))
       })
       imageUrls = imageUrls.filter(Boolean)
-      console.log({description, imageUrls})
       return { description, imageUrls };
     } catch (error) {
       console.error(error);
