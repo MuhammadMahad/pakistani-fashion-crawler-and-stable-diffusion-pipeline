@@ -1,9 +1,7 @@
-# Getting started with Crawlee
+# Pakistani Fashion Clothing sites crawler
 
-This example uses `PlaywrightCrawler` to recursively crawl https://crawlee.dev using the browser automation library [Playwright](https://playwright.dev).
+This is a site crawler developed using the typescript library [Crawlee](https://crawlee.dev/docs/introduction) to crawl Pakistani clothing sites to create a dataset of clothing images and their descriptions for fine-tuning a text to image model such as Stable Diffusion.
 
-You can find more examples and documentation at the following links:
-
-- [Step-by-step tutorial](https://crawlee.dev/docs/introduction) for Crawlee
-- `PlaywrightCrawler` [API documentation](https://crawlee.dev/api/playwright-crawler/class/PlaywrightCrawler)
-- Other [examples](https://crawlee.dev/docs/examples/playwright-crawler)
+Extra care was taken to exclude data from:
+- vulnerable demographics such as children
+- non-clothing items such as fragnances, perfumes etc.
