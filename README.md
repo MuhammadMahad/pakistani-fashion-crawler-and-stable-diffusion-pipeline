@@ -27,6 +27,8 @@ Then by using huggingface's diffusers library, we finetuned the Stable Diffusion
 
 After all was said and done, here is the [model](https://huggingface.co/mohummadmahad/pakistani-fashion-generator-model) I came up with. Pretty good for a first try I might say though of course not perfect.
 
+You can try out a demo [here](https://huggingface.co/spaces/mohummadmahad/pakistani-fashion-generator-model-space).
+
 # Challenges and Shortcomings
 
 Here I will make a note of some challenges I faced during this whole process as well as where the model falls short.
