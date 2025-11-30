@@ -11,7 +11,7 @@ Extra care was taken to exclude data from:
 - vulnerable demographics such as children
 - non-clothing items such as fragnances, perfumes etc.
 
-Once all the data was crawled, we got json files from each website with the image urls and descriptions. These were all concatenated using some simple scripts into a single folder called 'json-files' which due to size constraints on Github is not shared here.
+Once all the data was crawled, we got json files from each website with the image urls and descriptions. These were all concatenated using some simple scripts into a single folder called 'json-files'.
 
 2. Dataset Creation
 
